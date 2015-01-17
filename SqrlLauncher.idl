@@ -1,0 +1,18 @@
+// SqrlLauncher.idl : IDL source for SqrlLauncher
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (SqrlLauncher.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	uuid(E17978B2-44D8-4327-BA95-27B75E7F4EDD),
+	version(1.0),
+]
+library SqrlLauncherLib
+{
+	importlib("stdole2.tlb");
+};
+
