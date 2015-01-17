@@ -6,9 +6,17 @@
 #include "SqrlLauncher_i.h"
 #include "xdlldata.h"
 
-
 using namespace ATL;
 
+#include <cpprest/http_client.h>
+#include <cpprest/filestream.h>
+#include <cpprest/uri.h>
+#include <thread>
+
+using namespace concurrency::streams;
+using namespace web::http::client;
+
+using namespace web::http;
 
 class CSqrlLauncherModule : public ATL::CAtlExeModuleT< CSqrlLauncherModule >
 {
