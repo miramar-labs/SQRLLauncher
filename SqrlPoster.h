@@ -5,6 +5,8 @@
 using namespace std;
 
 #include <cpprest/json.h>
+#include <cpprest/http_client.h>
+using namespace web::http::client;
 using namespace utility;
 
 class SqrlPoster
@@ -33,7 +35,9 @@ private:
 	string_t success_action_status;
 
 private:
-	pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile);
+	pplx::task<void> RequestJSONValueAsync(utility::string_t sFile);
+	pplx::task<void> HTTPPostAsync(utility::string_t file);
+
 	std::wstring UploadPDF(bool* errorFound);
 	int doPost(const HINTERNET *request);
 
