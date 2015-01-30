@@ -9,6 +9,8 @@ using namespace std;
 using namespace web::http::client;
 using namespace utility;
 
+#define USE_WININET
+
 class SqrlPoster
 {
 public:
@@ -36,10 +38,13 @@ private:
 
 private:
 	pplx::task<void> RequestJSONValueAsync(utility::string_t sFile);
-	pplx::task<void> HTTPPostAsync(utility::string_t file);
 
+#ifndef USE_WININET
+	pplx::task<void> HTTPPostAsync(utility::string_t file);
+#else
 	std::wstring UploadPDF(bool* errorFound);
 	int doPost(const HINTERNET *request);
+#endif
 
 private:
 	std::wstring FullPath, Drive, Directory, FileName, Extension, FileNamePlusExt;

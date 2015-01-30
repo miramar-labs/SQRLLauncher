@@ -17,8 +17,6 @@ using namespace web::http;
 using namespace web::http::client;
 using namespace utility;
 
-#define USE_WININET
-
 void stripQuotes(utility::string_t& s){
 	s.erase(remove(s.begin(), s.end(), '\"'), s.end());
 }
@@ -192,6 +190,7 @@ pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile)
 	*/
 }
 
+#ifndef USE_WININET
 pplx::task<void> SqrlPoster::HTTPPostAsync(utility::string_t file)
 {
 	http_client client(deliver_to);
@@ -264,7 +263,7 @@ pplx::task<void> SqrlPoster::HTTPPostAsync(utility::string_t file)
 		return fileStream.close();
 	});
 }
-
+#else
 int SqrlPoster::doPost(const HINTERNET *request)
 {
 	static const char* mimeBoundary = "EBA799EB-D9A2-472B-AE86-568D4645707E";
@@ -426,4 +425,4 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 
 	return outputString;
 }
-
+#endif
