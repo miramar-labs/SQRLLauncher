@@ -84,9 +84,12 @@ std::ifstream::pos_type filesize(const std::wstring& filename)
 	int stringSize = WideCharToMultiByte(CP_ACP, 0, filename.c_str(), -1, nullptr, 0, nullptr, nullptr);
 	char* fname = new char[stringSize];
 	WideCharToMultiByte(CP_ACP, 0, filename.c_str(), -1, fname, stringSize, nullptr, nullptr);
+	
 	std::ifstream in(fname, std::ifstream::ate | std::ifstream::binary);
+	std::ifstream::pos_type size = in.tellg();
+	
 	delete[] fname;
-	return in.tellg();
+	return size;
 }
 
 pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile)
@@ -347,6 +350,11 @@ std::wstring GetPDFId(const HINTERNET *request, bool* errorFound)
 {
 	std::wstring outputString;
 	int result = ::WinHttpReceiveResponse(*request, nullptr);
+	if (!result){
+		DWORD err = GetLastError();
+		std::cout << "WinHttpReceiveResponse failed - status code: " << err << std::endl;
+		return L"ERROR";
+	}
 	unsigned long dwSize = sizeof(unsigned long);
 	if (result)
 	{
@@ -354,6 +362,28 @@ std::wstring GetPDFId(const HINTERNET *request, bool* errorFound)
 		dwSize = ARRAYSIZE(headers) * sizeof(wchar_t);
 		result = ::WinHttpQueryHeaders(
 			*request, WINHTTP_QUERY_RAW_HEADERS, nullptr, headers, &dwSize, nullptr);
+
+		std::cout << "WinHttpQueryHeaders - status code: " << result << std::endl;
+
+	}
+	if (result)
+	{
+		char resultText[1024] = { 0 };
+		unsigned long bytesRead;
+		dwSize = ARRAYSIZE(resultText) * sizeof(char);
+		result = ::WinHttpReadData(*request, resultText, dwSize, &bytesRead);
+		if (result)
+		{
+			// Convert string to wstring
+			int wideSize = MultiByteToWideChar(CP_UTF8, 0, resultText, -1, 0, 0);
+			wchar_t* wideString = new wchar_t[wideSize];
+			result = MultiByteToWideChar(CP_UTF8, 0, resultText, -1, wideString, wideSize);
+			if (result)
+			{
+				
+			}
+			delete[] wideString;
+		}
 	}
 	
 	return outputString;
@@ -383,8 +413,8 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		return L"ERROR";
 	}
 	request = ::WinHttpOpenRequest(
-		connect, L"POST", L"/test.pdf", L"HTTP/1.1",		//CHECKME !!!!
-		WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+		connect, L"POST", L"", L"HTTP/1.1",		//CHECKME !!!!
+		WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
 	if (!request){
 		DWORD err = GetLastError();
 		std::cout << "WinHttpOpenRequest failed - status code: " << err << std::endl;
@@ -398,8 +428,11 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	// then automatically supply the client domain credentials.
 	autoProxyOptions.fAutoLogonIfChallenged = true;
 
+	wstring tmp = deliver_to;
+	tmp += L"/";
+
 	if (FALSE != ::WinHttpGetProxyForUrl(
-		session, deliver_to.c_str(), &autoProxyOptions, &proxyInfo))
+		session, tmp.c_str(), &autoProxyOptions, &proxyInfo))
 	{
 		// A proxy configuration was found, set it on the request handle.
 		::WinHttpSetOption(request, WINHTTP_OPTION_PROXY, &proxyInfo, proxyInfoSize);

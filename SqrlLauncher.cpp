@@ -17,7 +17,7 @@ CSqrlLauncherModule _AtlModule;
 extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, 
 	LPTSTR lpCmdLine, int nShowCmd)
 {
-	std::wstring sFilePath(U("C:\\Users\\Aaron Cody\\Miramar Labs\\Sqrl Project\\Debug\\test.pdf"));
+	std::wstring sFilePath(U("C:\\Users\\Aaron Cody\\Desktop\\sqrl\\test.pdf"));
 
 	SqrlPoster poster(sFilePath);
 
