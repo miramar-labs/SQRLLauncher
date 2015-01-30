@@ -267,6 +267,12 @@ pplx::task<void> SqrlPoster::HTTPPostAsync(utility::string_t file)
 	});
 }
 #else
+
+void dbgDump(std::string& input){
+	std::ofstream out("C:\\Users\\Aaron Cody\\Desktop\\sqrl\\dbg.txt");
+	out << input;
+	out.close();
+}
 int SqrlPoster::doPost(const HINTERNET *request)
 {
 	static const char* mimeBoundary = "EBA799EB-D9A2-472B-AE86-568D4645707E";
@@ -324,8 +330,11 @@ int SqrlPoster::doPost(const HINTERNET *request)
 		std::ostringstream sb_ascii;
 		sb_ascii << str;
 		sb_ascii << f.rdbuf();
-		sb_ascii << "\r\n--" << mimeBoundary << "\r\n";
+		sb_ascii << "\r\n--" << mimeBoundary << "--\r\n";
 		str = sb_ascii.str();
+
+		dbgDump(str);
+
 		result = WinHttpSendRequest(
 			*request, 
 			WINHTTP_NO_ADDITIONAL_HEADERS, 
