@@ -67,7 +67,14 @@ std::wstring SqrlPoster::doPOST(){
 	//TODO error checking...
 #else
 	// use cassablanca api:
-	this->HTTPPostAsync(FullPath).wait();
+	try{
+		this->HTTPPostAsync(FullPath).wait();
+	}
+	catch (web::http::http_exception& e){
+		wostringstream ss;
+		ss << e.what() << endl;
+		wcout << ss.str();
+	}
 
 #endif
 	return url;
@@ -174,9 +181,9 @@ pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile)
 		catch (const http_exception& e)
 		{
 			// TODO - Print error.
-			//wostringstream ss;
-			//ss << e.what() << endl;
-			//wcout << ss.str();
+			wostringstream ss;
+			ss << e.what() << endl;
+			wcout << ss.str();
 		}
 	});
 
@@ -187,7 +194,7 @@ pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile)
 
 pplx::task<void> SqrlPoster::HTTPPostAsync(utility::string_t file)
 {
-	http_client client(U("https://sqrl-local-dev-bucket.s3.amazonaws.com"));
+	http_client client(deliver_to);
 
 	concurrency::streams::istream fileStream;
 
@@ -197,6 +204,31 @@ pplx::task<void> SqrlPoster::HTTPPostAsync(utility::string_t file)
 		fileStream = inFile;
 
 		http_request req;
+
+		req.set_method(methods::POST);
+
+		req.headers().set_content_length(filesize(FullPath));
+
+		req.headers().set_content_type(U("multipart"));
+
+		/*req.headers().add(U("acl"), acl);
+
+		req.headers().add(U("key"), key);
+
+		req.headers().add(U("policy"), policy);
+
+		req.headers().add(U("signature"), signature);
+
+		req.headers().add(U("AWSAccessKeyId"), AWSAccessKeyId);
+
+		req.headers().add(U("Content-Type"), Content_Type);
+
+		req.headers().add(U("success_action_status"), success_action_status);
+
+		std::wostringstream sb;
+		sb << L"Content-Disposition: form-data; name=\"file\"; filename=\"" << FileNamePlusExt << L"\"\r\n\r\n";
+		sb << L"\r\n" << "Content-Type: application/pdf" << L"\r\n";
+		req.headers().add(sb.str(), U("Content-Type: application/pdf"));*/
 
 		req.headers().add(U("Content-Disposition: form-data; name=\"acl\""), acl);
 
@@ -216,10 +248,6 @@ pplx::task<void> SqrlPoster::HTTPPostAsync(utility::string_t file)
 		sb << L"Content-Disposition: form-data; name=\"file\"; filename=\"" << FileNamePlusExt << L"\"\r\n\r\n";
 		sb << L"\r\n" << "Content-Type: application/pdf" << L"\r\n";
 		req.headers().add(sb.str(), U("Content-Type: application/pdf"));
-
-		req.headers().set_content_length(filesize(FullPath));
-
-		req.headers().set_content_type(U("multipart"));
 
 		utility::size64_t length = fileStream.streambuf().size();
 		req.set_body(fileStream, length);
@@ -303,10 +331,10 @@ int SqrlPoster::doPost(const HINTERNET *request)
 			static_cast<unsigned long>(str.length()), 
 			static_cast<unsigned long>(str.length()), 
 			0);
-		if (result){
-
+		if (result != TRUE){
+			DWORD err = GetLastError();
+			std::cout << "WinHttpSendRequest failed - status code: " << err << std::endl;
 		}
-		//DWORD err = GetLastError();
 
 	}
 	return result;
@@ -345,10 +373,10 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	session = ::WinHttpOpen(
 		L"Hilo/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY,
 		WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	connect = ::WinHttpConnect(session, L"sqrl-dev-bucket.s3.amazonaws.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+	connect = ::WinHttpConnect(session, deliver_to.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
 	//TODO DWORD err = GetLastError();
 	request = ::WinHttpOpenRequest(
-		connect, L"POST", L"sqrl-dev-bucket.s3.amazonaws.com", L"HTTP/1.1",
+		connect, L"POST", deliver_to.c_str(), L"HTTP/1.1",
 		WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
 	autoProxyOptions.dwFlags = WINHTTP_AUTOPROXY_AUTO_DETECT;
 	// Use DHCP and DNS-based auto-detection.
@@ -359,13 +387,14 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	autoProxyOptions.fAutoLogonIfChallenged = true;
 
 	if (FALSE != ::WinHttpGetProxyForUrl(
-		session, L"sqrl-dev-bucket.s3.amazonaws.com", &autoProxyOptions, &proxyInfo))
+		session, deliver_to.c_str(), &autoProxyOptions, &proxyInfo))
 	{
 		// A proxy configuration was found, set it on the request handle.
 		::WinHttpSetOption(request, WINHTTP_OPTION_PROXY, &proxyInfo, proxyInfoSize);
 	}
 
 	doPost(&request);
+
 	outputString = GetPDFId(&request, errorFound);
 
 	// Clean up
