@@ -17,23 +17,27 @@ CSqrlLauncherModule _AtlModule;
 extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, 
 	LPTSTR lpCmdLine, int nShowCmd)
 {
-	std::wstring sFilePath(U("C:\\Users\\Aaron Cody\\Desktop\\sqrl\\test.pdf"));
+	//std::wstring sFilePath(U("C:\\Users\\Aaron Cody\\Desktop\\sqrl\\test.pdf"));
+
+	//Set cmdline args in debug settings to: C:\Users\Aaron Cody\Desktop\sqrl\test.pdf
+	std::wstring sFilePath(lpCmdLine);
 
 	SqrlPoster poster(sFilePath);
 
-	utility::string_t url = poster.doPOST();
+	bool err = FALSE;
 
-	/* bring up browser here.....
-	std::wstring sFileRemote(L"http://www.getsqrl.com");
-	std::wstring sFileLocal(L"file:////"); sFileLocal += sFile;
+	utility::string_t url = poster.doPOST(&err);
 
-	IWebBrowser2*	 m_spWebBrowser = NULL;//TODO
-	BSTR url = SysAllocString(sFileLocal.c_str());
-	m_spWebBrowser->Navigate(url, NULL, NULL, NULL, NULL);
-	SysFreeString(url);*/
+	if (!err){
+		/* bring up browser here.....
+		IWebBrowser2*	 m_spWebBrowser = NULL;//TODO
+		BSTR url = SysAllocString(url.c_str());
+		m_spWebBrowser->Navigate(url, NULL, NULL, NULL, NULL);
+		SysFreeString(url);*/
+	}
 
 	//delete generated PDF ....
-	//DeleteFileW(sFile.c_str());		//will fail if in use....
+	//DeleteFileW(sFilePath.c_str());		//will fail if in use....
 
 	return _AtlModule.WinMain(nShowCmd);
 }

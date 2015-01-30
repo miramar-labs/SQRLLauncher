@@ -41,69 +41,103 @@ SqrlPoster::SqrlPoster(const std::wstring& path)
 		Extension.size());
 
 	wchar_t buff[MAX_PATH+1];
+
 	memset(buff, 0, sizeof(buff));
 	wcsncpy_s(buff, FileName.c_str(), sizeof(buff));
 	wcsncat_s(buff, Extension.c_str(), sizeof(buff));
 
 	FileNamePlusExt = buff;
 
+	memset(buff, 0, sizeof(buff));
+
+	::GetCurrentDirectoryW(sizeof(buff), buff);
+
+	iniFile = buff; iniFile += L"\\SqrlLauncher.ini";
+	
+	memset(buff, 0, sizeof(buff));
+
+	GetPrivateProfileString(
+		L"settings",
+		L"sqrlhttps",
+		L"sqrl-development.herokuapp.com",
+		buff,
+		sizeof(buff),
+		iniFile.c_str()
+		);
+
+	sqrlhttps = buff;
+
+	memset(buff, 0, sizeof(buff));
+
+	GetPrivateProfileString(
+		L"settings",
+		L"sqrlendpoint",
+		L"/api/v1/couriers",
+		buff,
+		sizeof(buff),
+		iniFile.c_str()
+		);
+
+	sqrlendpoint = buff;
+
+	memset(buff, 0, sizeof(buff));
+
+	GetPrivateProfileString(
+		L"settings",
+		L"bucketurl",
+		L"sqrl-dev-bucket.s3.amazonaws.com",
+		buff,
+		sizeof(buff),
+		iniFile.c_str()
+		);
+
+	bucketurl = buff;
 }
 
 SqrlPoster::~SqrlPoster()
 {
 }
 
-std::wstring SqrlPoster::doPOST(){
+std::wstring SqrlPoster::doPOST(bool* errorFound){
 
-	this->RequestJSONValueAsync(FullPath).wait();
-	
 	std::wstring url;
+	
+	GetUploadInfo(FullPath, errorFound).wait();
+	
+	if (*errorFound == FALSE){
 
-#ifdef USE_WININET
-	bool err = false;
-	url = UploadPDF(&err);
-	//TODO error checking...
-#else
-	// use cassablanca api:
-	try{
-		this->HTTPPostAsync(FullPath).wait();
-	}
-	catch (web::http::http_exception& e){
-		wostringstream ss;
-		ss << e.what() << endl;
-		wcout << ss.str();
-	}
+		url = UploadPDF(errorFound);
 
-#endif
+	}
+	
+	ATLASSERT(*errorFound == FALSE);
+
 	return url;
 }
 
 //private:
-std::ifstream::pos_type filesize(const std::wstring& filename)
-{
-	int stringSize = WideCharToMultiByte(CP_ACP, 0, filename.c_str(), -1, nullptr, 0, nullptr, nullptr);
-	char* fname = new char[stringSize];
-	WideCharToMultiByte(CP_ACP, 0, filename.c_str(), -1, fname, stringSize, nullptr, nullptr);
-	
-	std::ifstream in(fname, std::ifstream::ate | std::ifstream::binary);
-	std::ifstream::pos_type size = in.tellg();
-	
-	delete[] fname;
-	return size;
-}
 
-pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile)
+pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorFound)
 {
-	http_client client(L"https://sqrl-development.herokuapp.com");
+	*errorFound = FALSE;
+
+	std::wstring url(L"https://"); url += sqrlhttps;
+	
+	http_client client(url);
 
 	json::value obj;
+
 	obj[L"name"] = json::value::string(FileNamePlusExt);
 	obj[L"file_type"] = json::value::string(U("application/pdf"));
-	obj[L"size"] = json::value::number((int32_t)filesize(FullPath));
 
-	const utility::string_t q(U("/api/v1/couriers"));
+	std::ifstream in(sFile, std::ifstream::ate | std::ifstream::binary);
+	std::ifstream::pos_type nbytes = in.tellg();
 
-	return client.request(methods::POST, q, obj).then([](http_response response) -> pplx::task<json::value>
+	obj[L"size"] = json::value::number((int32_t)nbytes);
+
+	const utility::string_t q(sqrlendpoint);
+
+	return client.request(methods::POST, q, obj).then([errorFound](http_response response) -> pplx::task<json::value>
 	{
 		if (response.status_code() == status_codes::OK)
 		{
@@ -111,9 +145,10 @@ pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile)
 		}
 
 		// Handle error cases, for now return empty json value... 
+		*errorFound = TRUE;
 		return pplx::task_from_result(json::value());
 	})
-		.then([this](pplx::task<json::value> previousTask)
+		.then([this, errorFound](pplx::task<json::value> previousTask)
 	{
 		try
 		{
@@ -181,106 +216,28 @@ pplx::task<void> SqrlPoster::RequestJSONValueAsync(utility::string_t sFile)
 		}
 		catch (const http_exception& e)
 		{
-			// TODO - Print error.
-			wostringstream ss;
-			ss << e.what() << endl;
-			wcout << ss.str();
+			std::cerr << "GetUploadInfo failed - status code: " << e.what() << std::endl;
+			*errorFound = TRUE;
 		}
 	});
-
-	/* Output:
-	Content-Type must be application/json to extract (is: text/html)
-	*/
 }
-
-#ifndef USE_WININET
-pplx::task<void> SqrlPoster::HTTPPostAsync(utility::string_t file)
-{
-	http_client client(deliver_to);
-
-	concurrency::streams::istream fileStream;
-
-	return concurrency::streams::fstream::open_istream(utility::conversions::to_utf16string(file))
-		.then([=](concurrency::streams::istream inFile) mutable
-	{
-		fileStream = inFile;
-
-		http_request req;
-
-		req.set_method(methods::POST);
-
-		req.headers().set_content_length(filesize(FullPath));
-
-		req.headers().set_content_type(U("multipart"));
-
-		/*req.headers().add(U("acl"), acl);
-
-		req.headers().add(U("key"), key);
-
-		req.headers().add(U("policy"), policy);
-
-		req.headers().add(U("signature"), signature);
-
-		req.headers().add(U("AWSAccessKeyId"), AWSAccessKeyId);
-
-		req.headers().add(U("Content-Type"), Content_Type);
-
-		req.headers().add(U("success_action_status"), success_action_status);
-
-		std::wostringstream sb;
-		sb << L"Content-Disposition: form-data; name=\"file\"; filename=\"" << FileNamePlusExt << L"\"\r\n\r\n";
-		sb << L"\r\n" << "Content-Type: application/pdf" << L"\r\n";
-		req.headers().add(sb.str(), U("Content-Type: application/pdf"));*/
-
-		req.headers().add(U("Content-Disposition: form-data; name=\"acl\""), acl);
-
-		req.headers().add(U("Content-Disposition: form-data; name=\"key\""), key);
-
-		req.headers().add(U("Content-Disposition: form-data; name=\"policy\""), policy);
-
-		req.headers().add(U("Content-Disposition: form-data; name=\"signature\""), signature);
-
-		req.headers().add(U("Content-Disposition: form-data; name=\"AWSAccessKeyId\""), AWSAccessKeyId);
-
-		req.headers().add(U("Content-Disposition: form-data; name=\"Content-Type\""), Content_Type);
-
-		req.headers().add(U("Content-Disposition: form-data; name=\"success_action_status\""), success_action_status);
-
-		std::wostringstream sb;
-		sb << L"Content-Disposition: form-data; name=\"file\"; filename=\"" << FileNamePlusExt << L"\"\r\n\r\n";
-		sb << L"\r\n" << "Content-Type: application/pdf" << L"\r\n";
-		req.headers().add(sb.str(), U("Content-Type: application/pdf"));
-
-		utility::size64_t length = fileStream.streambuf().size();
-		req.set_body(fileStream, length);
-
-		return client.request(req);
-	})
-		.then([=](http_response response)  // Handle response headers arriving.
-	{
-		std::cout << "Received response status code: " << response.status_code();
-		//do some other handling here as well
-	})
-		.then([=]()
-	{
-		return fileStream.close();
-	});
-}
-#else
 
 void dbgDump(std::string& input){
-	std::ofstream out("C:\\Users\\Aaron Cody\\Desktop\\sqrl\\dbg.txt");
+#ifdef _DEBUG
+	std::ofstream out("C:\\sqrlposter-dbg.txt");
 	out << input;
 	out.close();
+#endif
 }
-int SqrlPoster::doPost(const HINTERNET *request)
-{
-	static const char* mimeBoundary = "EBA799EB-D9A2-472B-AE86-568D4645707E";
-	static const wchar_t* contentType =
-		L"Content-Type: multipart/form-data; boundary=EBA799EB-D9A2-472B-AE86-568D4645707E\r\n";
 
-	int result = ::WinHttpAddRequestHeaders(
-		*request, contentType, (unsigned long)-1, WINHTTP_ADDREQ_FLAG_ADD);
+int SqrlPoster::doPost(const HINTERNET *request, bool* errorFound)
+{
+	static const char* mimeBoundary = "B14433C2-EF49-4DB1-938F-EFFE9B471609";
+	
+	static const wchar_t* contentType = L"Content-Type: multipart/form-data; boundary=B14433C2-EF49-4DB1-938F-EFFE9B471609\r\n";
+
+	int result = ::WinHttpAddRequestHeaders(*request, contentType, (unsigned long)-1, WINHTTP_ADDREQ_FLAG_ADD);
+	
 	if (result)
 	{
 		std::wostringstream sb;
@@ -317,7 +274,6 @@ int SqrlPoster::doPost(const HINTERNET *request)
 		sb << L"Content-Disposition: form-data; name=\"file\"; filename=\"" << FileNamePlusExt << L"\"\r\n\r\n";
 		sb << L"\r\n" << "Content-Type: application/pdf" << L"\r\n";
 
-		// Convert wstring to string
 		std::wstring wideString = sb.str();
 		int stringSize = WideCharToMultiByte(CP_ACP, 0, wideString.c_str(), -1, nullptr, 0, nullptr, nullptr);
 		char* temp = new char[stringSize];
@@ -325,7 +281,6 @@ int SqrlPoster::doPost(const HINTERNET *request)
 		std::string str = temp;
 		delete[] temp;
 
-		// Add the photo to the stream
 		std::ifstream f(FullPath, std::ios::binary);
 		std::ostringstream sb_ascii;
 		sb_ascii << str;
@@ -342,16 +297,17 @@ int SqrlPoster::doPost(const HINTERNET *request)
 			static_cast<unsigned long>(str.length()), 
 			static_cast<unsigned long>(str.length()), 
 			0);
-		if (result != TRUE){
-			DWORD err = GetLastError();
-			std::cout << "WinHttpSendRequest failed - status code: " << err << std::endl;
-		}
 
+		if (result != TRUE){
+			std::cerr << "WinHttpSendRequest failed - status code: " << GetLastError() << std::endl;
+			*errorFound = TRUE;
+		}
 	}
 	else{
-		DWORD err = GetLastError();
-		std::cout << "WinHttpAddRequestHeaders failed - status code: " << err << std::endl;
+		std::cerr << "WinHttpAddRequestHeaders failed - status code: " << GetLastError() << std::endl;
+		*errorFound = TRUE;
 	}
+
 	return result;
 }
 
@@ -360,19 +316,22 @@ std::wstring GetPDFId(const HINTERNET *request, bool* errorFound)
 	std::wstring outputString;
 	int result = ::WinHttpReceiveResponse(*request, nullptr);
 	if (!result){
-		DWORD err = GetLastError();
-		std::cout << "WinHttpReceiveResponse failed - status code: " << err << std::endl;
-		return L"ERROR";
+		std::cerr << "WinHttpReceiveResponse failed - status code: " << GetLastError() << std::endl;
+		*errorFound = TRUE;
+		return L"";
 	}
 	unsigned long dwSize = sizeof(unsigned long);
 	if (result)
 	{
 		wchar_t headers[1024];
 		dwSize = ARRAYSIZE(headers) * sizeof(wchar_t);
-		result = ::WinHttpQueryHeaders(
-			*request, WINHTTP_QUERY_RAW_HEADERS, nullptr, headers, &dwSize, nullptr);
 
-		std::cout << "WinHttpQueryHeaders - status code: " << result << std::endl;
+		result = ::WinHttpQueryHeaders(*request, WINHTTP_QUERY_RAW_HEADERS, nullptr, headers, &dwSize, nullptr);
+
+		if (!result){
+			std::cerr << "WinHttpQueryHeaders failed - status code: " << GetLastError() << std::endl;
+			*errorFound = TRUE;
+		}
 
 	}
 	if (result)
@@ -389,9 +348,13 @@ std::wstring GetPDFId(const HINTERNET *request, bool* errorFound)
 			result = MultiByteToWideChar(CP_UTF8, 0, resultText, -1, wideString, wideSize);
 			if (result)
 			{
-				
+				std::cout << "WinHttpReadData : " << wideString << std::endl;
 			}
 			delete[] wideString;
+		}
+		else{
+			std::cerr << "WinHttpReadData failed - status code: " << GetLastError() << std::endl;
+			*errorFound = TRUE;
 		}
 	}
 	
@@ -400,7 +363,10 @@ std::wstring GetPDFId(const HINTERNET *request, bool* errorFound)
 
 std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 {
-	std::wstring outputString;
+	*errorFound = FALSE;
+
+	std::wstring outputString = L"";
+
 	HINTERNET session = nullptr;
 	HINTERNET connect = nullptr;
 	HINTERNET request = nullptr;
@@ -415,20 +381,26 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	session = ::WinHttpOpen(
 		L"Hilo/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY,
 		WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+	if (!session){
+		std::cerr << "WinHttpOpen failed - status code: " << GetLastError() << std::endl;
+		*errorFound = TRUE;
+		return L"";
+	}
 	connect = ::WinHttpConnect(session, deliver_to.substr(8).c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
 	if (!connect){
-		DWORD err = GetLastError();
-		std::cout << "WinHttpConnect failed - status code: " << err << std::endl;
-		return L"ERROR";
+		std::cerr << "WinHttpConnect failed - status code: " << GetLastError() << std::endl;
+		*errorFound = TRUE;
+		return L"";
 	}
 	request = ::WinHttpOpenRequest(
-		connect, L"POST", L"", L"HTTP/1.1",		//CHECKME !!!!
+		connect, L"POST", L"", L"HTTP/1.1",		
 		WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
 	if (!request){
-		DWORD err = GetLastError();
-		std::cout << "WinHttpOpenRequest failed - status code: " << err << std::endl;
-		return L"ERROR";
+		std::cerr << "WinHttpOpenRequest failed - status code: " << GetLastError() << std::endl;
+		*errorFound = TRUE;
+		return L"";
 	}
+
 	autoProxyOptions.dwFlags = WINHTTP_AUTOPROXY_AUTO_DETECT;
 	// Use DHCP and DNS-based auto-detection.
 	autoProxyOptions.dwAutoDetectFlags =
@@ -437,8 +409,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	// then automatically supply the client domain credentials.
 	autoProxyOptions.fAutoLogonIfChallenged = true;
 
-	wstring tmp = deliver_to;
-	tmp += L"/";
+	wstring tmp = deliver_to; tmp += L"/";
 
 	if (FALSE != ::WinHttpGetProxyForUrl(
 		session, tmp.c_str(), &autoProxyOptions, &proxyInfo))
@@ -447,11 +418,14 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		::WinHttpSetOption(request, WINHTTP_OPTION_PROXY, &proxyInfo, proxyInfoSize);
 	}
 
-	doPost(&request);
+	doPost(&request, errorFound);
 
-	outputString = GetPDFId(&request, errorFound);
+	if (*errorFound == FALSE){
+		outputString = GetPDFId(&request, errorFound);
+	}
 
-	// Clean up
+	ATLASSERT(*errorFound == FALSE);
+
 	if (proxyInfo.lpszProxy)
 	{
 		GlobalFree(proxyInfo.lpszProxy);
@@ -461,10 +435,13 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		GlobalFree(proxyInfo.lpszProxyBypass);
 	}
 
-	WinHttpCloseHandle(request);
-	WinHttpCloseHandle(connect);
-	WinHttpCloseHandle(session);
+	if (request)
+		WinHttpCloseHandle(request);
+	if (connect)
+		WinHttpCloseHandle(connect);
+	if (session)
+		WinHttpCloseHandle(session);
 
 	return outputString;
 }
-#endif
+

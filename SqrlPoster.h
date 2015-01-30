@@ -17,7 +17,7 @@ public:
 	SqrlPoster(const std::wstring& FullPath);
 	~SqrlPoster();
 
-	std::wstring doPOST();	// does the upload and return URL to redirect to
+	std::wstring doPOST(bool* errorFound);	
 
 private:
 	string_t deliver_to;
@@ -37,16 +37,17 @@ private:
 	string_t success_action_status;
 
 private:
-	pplx::task<void> RequestJSONValueAsync(utility::string_t sFile);
-
-#ifndef USE_WININET
-	pplx::task<void> HTTPPostAsync(utility::string_t file);
-#else
+	pplx::task<void> GetUploadInfo(utility::string_t sFile, bool* errorFound);
 	std::wstring UploadPDF(bool* errorFound);
-	int doPost(const HINTERNET *request);
-#endif
+	int doPost(const HINTERNET *request, bool* errorFound);
 
 private:
 	std::wstring FullPath, Drive, Directory, FileName, Extension, FileNamePlusExt;
+	std::wstring iniFile;
+
+	std::wstring sqrlhttps;
+	std::wstring sqrlendpoint;
+	std::wstring bucketurl;
+
 };
 
