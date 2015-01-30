@@ -337,6 +337,10 @@ int SqrlPoster::doPost(const HINTERNET *request)
 		}
 
 	}
+	else{
+		DWORD err = GetLastError();
+		std::cout << "WinHttpAddRequestHeaders failed - status code: " << err << std::endl;
+	}
 	return result;
 }
 
@@ -373,11 +377,20 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	session = ::WinHttpOpen(
 		L"Hilo/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY,
 		WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-	connect = ::WinHttpConnect(session, deliver_to.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
-	//TODO DWORD err = GetLastError();
+	connect = ::WinHttpConnect(session, deliver_to.substr(8).c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
+	if (!connect){
+		DWORD err = GetLastError();
+		std::cout << "WinHttpConnect failed - status code: " << err << std::endl;
+		return L"ERROR";
+	}
 	request = ::WinHttpOpenRequest(
-		connect, L"POST", deliver_to.c_str(), L"HTTP/1.1",
+		connect, L"POST", L"/test.pdf", L"HTTP/1.1",		//CHECKME !!!!
 		WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+	if (!request){
+		DWORD err = GetLastError();
+		std::cout << "WinHttpOpenRequest failed - status code: " << err << std::endl;
+		return L"ERROR";
+	}
 	autoProxyOptions.dwFlags = WINHTTP_AUTOPROXY_AUTO_DETECT;
 	// Use DHCP and DNS-based auto-detection.
 	autoProxyOptions.dwAutoDetectFlags =
