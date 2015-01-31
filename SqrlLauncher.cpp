@@ -75,7 +75,8 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 
 	//delete generated PDF locally .... (release only ...)
 #ifndef _DEBUG
-	::DeleteFileW(sFilePath.c_str());		
+	if (FileExists(sFilePath.c_str()))
+		::DeleteFileW(sFilePath.c_str());		
 #endif
 
 	return _AtlModule.WinMain(nShowCmd);
