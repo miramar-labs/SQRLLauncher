@@ -114,14 +114,16 @@ SqrlPoster::~SqrlPoster()
 std::wstring SqrlPoster::doUpload(bool* errorFound){
 
 	std::wstring url;
-	
+
 	GetUploadInfo(FullPath, errorFound).wait();
-	
+
 	if (*errorFound == FALSE)
 		url = UploadPDF(errorFound);
-	
-	if (*errorFound == TRUE)
-		DeletePDF(errorFound).wait();
+
+	if (*errorFound == TRUE){
+		bool err = false;	
+		DeletePDF(&err).wait();
+	}
 
 	return url;
 }
