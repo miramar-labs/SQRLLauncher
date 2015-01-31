@@ -38,7 +38,6 @@ private:
 	pplx::task<void>	GetUploadInfo(utility::string_t sFile, bool* errorFound);
 	std::wstring		UploadPDF(bool* errorFound);
 	pplx::task<void>	DeletePDF(bool* errorFound);
-	void				doHTTPPost(const HINTERNET *request, bool* errorFound);
 
 private:
 	std::wstring FullPath, Drive, Directory, FileName, Extension, FileNamePlusExt;

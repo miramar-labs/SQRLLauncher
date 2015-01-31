@@ -285,92 +285,6 @@ void dbgDump(std::string& input){
 #endif
 }
 
-void SqrlPoster::doHTTPPost(const HINTERNET *request, bool* errorFound)
-{
-	/*
-		Send a multipart/form-data POST request with the file contents to the URL contained in the "deliver_to" property in the response above. 
-		The properties in the "form_data" object above should be used as the form data's name/value pairs. 
-		The contents of the file should be sent using the form item name "file".
-	*/
-
-	static const char* mimeBoundary = "B14433C2-EF49-4DB1-938F-EFFE9B471609";
-	
-	static const wchar_t* contentType = L"Content-Type: multipart/form-data; boundary=B14433C2-EF49-4DB1-938F-EFFE9B471609\r\n";
-
-	int result = ::WinHttpAddRequestHeaders(*request, contentType, (unsigned long)-1, WINHTTP_ADDREQ_FLAG_ADD);
-	
-	if (result)
-	{
-		std::wostringstream sb;
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"acl\"\r\n";
-		sb << L"\r\n" << acl << L"\r\n";
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"key\"\r\n";
-		sb << L"\r\n" << key << L"\r\n";
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"policy\"\r\n";
-		sb << L"\r\n" << policy << L"\r\n";
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"signature\"\r\n";
-		sb << L"\r\n" << signature << L"\r\n";
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"AWSAccessKeyId\"\r\n";
-		sb << L"\r\n" << AWSAccessKeyId << L"\r\n";
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"Content-Type\"\r\n";
-		sb << L"\r\n" << Content_Type << L"\r\n";
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"success_action_status\"\r\n";
-		sb << L"\r\n" << success_action_status << L"\r\n";
-
-		sb << L"--" << mimeBoundary << L"\r\n";
-		sb << L"Content-Disposition: form-data; name=\"file\"; filename=\"" << FileNamePlusExt << L"\"\r\n\r\n";
-		sb << L"\r\n" << "Content-Type: application/pdf" << L"\r\n";
-
-		std::wstring wideString = sb.str();
-		int stringSize = WideCharToMultiByte(CP_ACP, 0, wideString.c_str(), -1, nullptr, 0, nullptr, nullptr);
-		char* temp = new char[stringSize];
-		WideCharToMultiByte(CP_ACP, 0, wideString.c_str(), -1, temp, stringSize, nullptr, nullptr);
-		std::string str = temp;
-		delete[] temp;
-
-		std::ifstream f(FullPath, std::ios::binary);
-		std::ostringstream sb_ascii;
-		sb_ascii << str;
-		sb_ascii << f.rdbuf();
-		sb_ascii << "\r\n--" << mimeBoundary << "--\r\n";
-		str = sb_ascii.str();
-
-		dbgDump(str);
-
-		result = WinHttpSendRequest(
-			*request, 
-			WINHTTP_NO_ADDITIONAL_HEADERS, 
-			0, (void*)str.c_str(),
-			static_cast<unsigned long>(str.length()), 
-			static_cast<unsigned long>(str.length()), 
-			0);
-
-		if (result != TRUE){
-			std::cerr << "WinHttpSendRequest failed - status code: " << GetLastError() << std::endl;
-			*errorFound = TRUE;
-		}
-	}
-	else{
-		std::cerr << "WinHttpAddRequestHeaders failed - status code: " << GetLastError() << std::endl;
-		*errorFound = TRUE;
-	}
-
-}
-
 std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 {
 	*errorFound = FALSE;
@@ -428,7 +342,87 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		::WinHttpSetOption(request, WINHTTP_OPTION_PROXY, &proxyInfo, proxyInfoSize);
 	}
 
-	doHTTPPost(&request, errorFound);
+	/*
+	Send a multipart/form-data POST request with the file contents to the URL contained in the "deliver_to" property in the response above.
+	The properties in the "form_data" object above should be used as the form data's name/value pairs.
+	The contents of the file should be sent using the form item name "file".
+	*/
+
+	static const char* mimeBoundary = "B14433C2-EF49-4DB1-938F-EFFE9B471609";
+
+	static const wchar_t* contentType = L"Content-Type: multipart/form-data; boundary=B14433C2-EF49-4DB1-938F-EFFE9B471609\r\n";
+
+	int result = ::WinHttpAddRequestHeaders(request, contentType, (unsigned long)-1, WINHTTP_ADDREQ_FLAG_ADD);
+
+	if (result)
+	{
+		std::wostringstream sb;
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"acl\"\r\n";
+		sb << L"\r\n" << acl << L"\r\n";
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"key\"\r\n";
+		sb << L"\r\n" << key << L"\r\n";
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"policy\"\r\n";
+		sb << L"\r\n" << policy << L"\r\n";
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"signature\"\r\n";
+		sb << L"\r\n" << signature << L"\r\n";
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"AWSAccessKeyId\"\r\n";
+		sb << L"\r\n" << AWSAccessKeyId << L"\r\n";
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"Content-Type\"\r\n";
+		sb << L"\r\n" << Content_Type << L"\r\n";
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"success_action_status\"\r\n";
+		sb << L"\r\n" << success_action_status << L"\r\n";
+
+		sb << L"--" << mimeBoundary << L"\r\n";
+		sb << L"Content-Disposition: form-data; name=\"file\"; filename=\"" << FileNamePlusExt << L"\"\r\n\r\n";
+		sb << L"\r\n" << "Content-Type: application/pdf" << L"\r\n";
+
+		std::wstring wideString = sb.str();
+		int stringSize = WideCharToMultiByte(CP_ACP, 0, wideString.c_str(), -1, nullptr, 0, nullptr, nullptr);
+		char* temp = new char[stringSize];
+		WideCharToMultiByte(CP_ACP, 0, wideString.c_str(), -1, temp, stringSize, nullptr, nullptr);
+		std::string str = temp;
+		delete[] temp;
+
+		std::ifstream f(FullPath, std::ios::binary);
+		std::ostringstream sb_ascii;
+		sb_ascii << str;
+		sb_ascii << f.rdbuf();
+		sb_ascii << "\r\n--" << mimeBoundary << "--\r\n";
+		str = sb_ascii.str();
+
+		dbgDump(str);
+
+		result = WinHttpSendRequest(
+			request,
+			WINHTTP_NO_ADDITIONAL_HEADERS,
+			0, (void*)str.c_str(),
+			static_cast<unsigned long>(str.length()),
+			static_cast<unsigned long>(str.length()),
+			0);
+
+		if (result != TRUE){
+			std::cerr << "WinHttpSendRequest failed - status code: " << GetLastError() << std::endl;
+			*errorFound = TRUE;
+		}
+	}
+	else{
+		std::cerr << "WinHttpAddRequestHeaders failed - status code: " << GetLastError() << std::endl;
+		*errorFound = TRUE;
+	}
 
 	if (*errorFound == FALSE){
 		/* construct the browser redirect URL:
