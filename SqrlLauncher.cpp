@@ -42,12 +42,10 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 
 	bool err = FALSE;
 
-	utility::string_t url = poster.doUpload(&err);
+	std::wstring url = poster.doUpload(&err);
 
 	if ((!err) && (!url.empty())){
-		/* 
-			bring up browser here.....
-		*/
+
 		IWebBrowser2* pBrowser = NULL;
 		HRESULT hr = CoCreateInstance(CLSID_InternetExplorer, NULL,
 		CLSCTX_SERVER, IID_IWebBrowser2, (LPVOID*)&pBrowser);
@@ -76,7 +74,7 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 		ATLTRACE("Sqrl:ERROR: unable to navigate to PDF...");
 	}
 
-	//delete generated PDF locally .... (release only ...)
+	//delete locally generated PDF .... (release only ...)
 #ifndef _DEBUG
 	if (FileExists(sFilePath.c_str()))
 		::DeleteFileW(sFilePath.c_str());		
