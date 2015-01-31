@@ -154,9 +154,7 @@ pplx::task<void> SqrlPoster::GetUploadInfo(bool* errorFound)
 
 	obj[L"size"] = json::value::number((int32_t)nbytes);
 
-	const utility::string_t q(sqrlendpoint);
-
-	return client.request(methods::POST, q, obj).then([errorFound](http_response response) -> pplx::task<json::value>
+	return client.request(methods::POST, sqrlendpoint, obj).then([errorFound](http_response response) -> pplx::task<json::value>
 	{
 		if (response.status_code() == status_codes::OK)
 		{
@@ -349,9 +347,9 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	}
 
 	/*
-	Send a multipart/form-data POST request with the file contents to the URL contained in the "deliver_to" property in the response above.
-	The properties in the "form_data" object above should be used as the form data's name/value pairs.
-	The contents of the file should be sent using the form item name "file".
+		Send a multipart/form-data POST request with the file contents to the URL contained in the "deliver_to" property in the response above.
+		The properties in the "form_data" object above should be used as the form data's name/value pairs.
+		The contents of the file should be sent using the form item name "file".
 	*/
 
 	static const char* mimeBoundary = "B14433C2-EF49-4DB1-938F-EFFE9B471609";
@@ -448,13 +446,9 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	}
 
 	if (proxyInfo.lpszProxy)
-	{
 		GlobalFree(proxyInfo.lpszProxy);
-	}
 	if (proxyInfo.lpszProxyBypass)
-	{
 		GlobalFree(proxyInfo.lpszProxyBypass);
-	}
 
 	if (request)
 		WinHttpCloseHandle(request);
