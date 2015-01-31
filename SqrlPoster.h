@@ -48,7 +48,5 @@ private:
 	std::wstring sqrlendpoint2;
 	std::wstring bucketurl;
 
-private:
-	void GetResponse(const HINTERNET *request, bool* errorFound);
 };
 
