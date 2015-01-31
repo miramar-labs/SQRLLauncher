@@ -72,6 +72,9 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 		}
 
 	}
+	else{
+		ATLTRACE("Sqrl:ERROR: unable to navigate to PDF...");
+	}
 
 	//delete generated PDF locally .... (release only ...)
 #ifndef _DEBUG
