@@ -48,5 +48,7 @@ private:
 	std::wstring sqrlendpoint2;
 	std::wstring bucketurl;
 
+private:
+	std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound);
 };
 

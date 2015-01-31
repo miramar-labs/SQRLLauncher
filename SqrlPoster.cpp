@@ -286,8 +286,7 @@ void dbgDump(std::string& input){
 #endif
 }
 
-#ifdef _DEBUG
-std::wstring GetResponse(const HINTERNET *request, bool* errorFound)
+std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
 {
 	std::wstring outputString;
 	int result = ::WinHttpReceiveResponse(*request, nullptr);
@@ -309,6 +308,15 @@ std::wstring GetResponse(const HINTERNET *request, bool* errorFound)
 			std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpQueryHeaders failed - status code: " << GetLastError() << std::endl;
 			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
+		}
+		else{
+			//TODO: check for errors in headers !!!
+			wstring hdr(headers);
+			if (hdr.find(L"OK") == std::wstring::npos){
+				std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpQueryHeaders returned an error: " << hdr.c_str() << std::endl;
+				ATLTRACE(ss.str().c_str());
+				*errorFound = TRUE;
+			}
 		}
 	}
 	if (result)
@@ -338,7 +346,6 @@ std::wstring GetResponse(const HINTERNET *request, bool* errorFound)
 	}
 	return outputString;
 }
-#endif
 
 std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 {
@@ -484,9 +491,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		*errorFound = TRUE;
 	}
 
-#ifdef _DEBUG
 	GetResponse(&request, errorFound);
-#endif
 
 	if (*errorFound == FALSE){
 		/* construct the browser redirect URL:
