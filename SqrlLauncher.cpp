@@ -44,32 +44,32 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 
 	utility::string_t url = poster.doUpload(&err);
 
-	if (!err){
+	if ((!err) && (!url.empty())){
 		/* 
 			bring up browser here.....
 		*/
-			IWebBrowser2* pBrowser = NULL;
-			HRESULT hr = CoCreateInstance(CLSID_InternetExplorer, NULL,
-			CLSCTX_SERVER, IID_IWebBrowser2, (LPVOID*)&pBrowser);
+		IWebBrowser2* pBrowser = NULL;
+		HRESULT hr = CoCreateInstance(CLSID_InternetExplorer, NULL,
+		CLSCTX_SERVER, IID_IWebBrowser2, (LPVOID*)&pBrowser);
 
-			if (SUCCEEDED(hr) && (pBrowser != NULL))
-			{
-				VARIANT vEmpty;
-				VariantInit(&vEmpty);
+		if (SUCCEEDED(hr) && (pBrowser != NULL))
+		{
+			VARIANT vEmpty;
+			VariantInit(&vEmpty);
 
-				VARIANT vFlags;
-				V_VT(&vFlags) = VT_I4;
-				V_I4(&vFlags) = navOpenInNewWindow;
+			VARIANT vFlags;
+			V_VT(&vFlags) = VT_I4;
+			V_I4(&vFlags) = navOpenInNewWindow;
 
-				BSTR bstrURL = SysAllocString(url.c_str());
+			BSTR bstrURL = SysAllocString(url.c_str());
 
-				pBrowser->Navigate(bstrURL, &vFlags, &vEmpty, &vEmpty, &vEmpty);
+			pBrowser->Navigate(bstrURL, &vFlags, &vEmpty, &vEmpty, &vEmpty);
 
-				SysFreeString(bstrURL);
+			SysFreeString(bstrURL);
 
-				if (pBrowser)
-					pBrowser->Release();
-			}
+			if (pBrowser)
+				pBrowser->Release();
+		}
 
 	}
 
