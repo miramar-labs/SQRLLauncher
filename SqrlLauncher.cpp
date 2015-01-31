@@ -19,7 +19,7 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 {
 	//std::wstring sFilePath(U("C:\\Users\\Aaron Cody\\Desktop\\sqrl\\test.pdf"));
 
-	//Set cmdline args in debug settings to: C:\Users\Aaron Cody\Desktop\sqrl\test.pdf
+	//DEBUG: Set cmdline args in debug settings to: C:\Users\Aaron Cody\Desktop\sqrl\test.pdf
 	std::wstring sFilePath(lpCmdLine);
 
 	SqrlPoster poster(sFilePath);
@@ -29,15 +29,38 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 	utility::string_t url = poster.doPOST(&err);
 
 	if (!err){
-		/* bring up browser here.....
-		IWebBrowser2*	 m_spWebBrowser = NULL;//TODO
-		BSTR url = SysAllocString(url.c_str());
-		m_spWebBrowser->Navigate(url, NULL, NULL, NULL, NULL);
-		SysFreeString(url);*/
+		/* 
+			bring up browser here.....
+		*/
+			IWebBrowser2* pBrowser = NULL;
+			HRESULT hr = CoCreateInstance(CLSID_InternetExplorer, NULL,
+			CLSCTX_SERVER, IID_IWebBrowser2, (LPVOID*)&pBrowser);
+
+			if (SUCCEEDED(hr) && (pBrowser != NULL))
+			{
+				VARIANT vEmpty;
+				VariantInit(&vEmpty);
+
+				VARIANT vFlags;
+				V_VT(&vFlags) = VT_I4;
+				V_I4(&vFlags) = navOpenInNewWindow;
+
+				BSTR bstrURL = SysAllocString(url.c_str());
+
+				pBrowser->Navigate(bstrURL, &vFlags, &vEmpty, &vEmpty, &vEmpty);
+
+				SysFreeString(bstrURL);
+
+				if (pBrowser)
+					pBrowser->Release();
+			}
+
 	}
 
-	//delete generated PDF ....
-	//DeleteFileW(sFilePath.c_str());		//will fail if in use....
+	//delete generated PDF locally .... (release only ...)
+#ifndef _DEBUG
+	::DeleteFileW(sFilePath.c_str());		
+#endif
 
 	return _AtlModule.WinMain(nShowCmd);
 }

@@ -37,9 +37,10 @@ private:
 	string_t success_action_status;
 
 private:
-	pplx::task<void> GetUploadInfo(utility::string_t sFile, bool* errorFound);
-	std::wstring UploadPDF(bool* errorFound);
-	int doPost(const HINTERNET *request, bool* errorFound);
+	pplx::task<void>	GetUploadInfo(utility::string_t sFile, bool* errorFound);
+	std::wstring		UploadPDF(bool* errorFound);
+	pplx::task<void>	DeletePDF(bool* errorFound);
+	void				doHTTPPost(const HINTERNET *request, bool* errorFound);
 
 private:
 	std::wstring FullPath, Drive, Directory, FileName, Extension, FileNamePlusExt;
@@ -47,6 +48,7 @@ private:
 
 	std::wstring sqrlhttps;
 	std::wstring sqrlendpoint;
+	std::wstring sqrlendpoint2;
 	std::wstring bucketurl;
 
 };

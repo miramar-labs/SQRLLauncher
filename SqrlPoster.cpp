@@ -72,13 +72,26 @@ SqrlPoster::SqrlPoster(const std::wstring& path)
 	GetPrivateProfileString(
 		L"settings",
 		L"sqrlendpoint",
-		L"/api/v1/couriers",
+		L"/api/v1/couriers/",
 		buff,
 		sizeof(buff),
 		iniFile.c_str()
 		);
 
 	sqrlendpoint = buff;
+
+	memset(buff, 0, sizeof(buff));
+
+	GetPrivateProfileString(
+		L"settings",
+		L"sqrlendpoint2",
+		L"/#/couriers/",
+		buff,
+		sizeof(buff),
+		iniFile.c_str()
+		);
+
+	sqrlendpoint2 = buff;
 
 	memset(buff, 0, sizeof(buff));
 
@@ -104,13 +117,11 @@ std::wstring SqrlPoster::doPOST(bool* errorFound){
 	
 	GetUploadInfo(FullPath, errorFound).wait();
 	
-	if (*errorFound == FALSE){
-
+	if (*errorFound == FALSE)
 		url = UploadPDF(errorFound);
-
-	}
 	
-	ATLASSERT(*errorFound == FALSE);
+	if (*errorFound == TRUE)
+		DeletePDF(errorFound).wait();
 
 	return url;
 }
@@ -119,6 +130,14 @@ std::wstring SqrlPoster::doPOST(bool* errorFound){
 
 pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorFound)
 {
+	/*
+		Send a POST request to https://SQRL_SERVER/api/v1/couriers with the following in the body (size is in bytes):
+		  {
+		   "name": "someFilename.pdf",
+		   "file_type": "application/pdf",
+		   "size": 103774
+		 }
+	*/
 	*errorFound = FALSE;
 
 	std::wstring url(L"https://"); url += sqrlhttps;
@@ -144,7 +163,6 @@ pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorF
 			return response.extract_json();
 		}
 
-		// Handle error cases, for now return empty json value... 
 		*errorFound = TRUE;
 		return pplx::task_from_result(json::value());
 	})
@@ -222,6 +240,41 @@ pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorF
 	});
 }
 
+pplx::task<void> SqrlPoster::DeletePDF(bool* errorFound)
+{
+	return pplx::create_task([this, errorFound]
+	{
+		*errorFound = FALSE;
+
+		/* construct the DELETE endpoint:
+			send a DELETE request to https ://SQRL_SERVER/api/v1/couriers/TRACKING_NUMBER 
+			(using the value of the "tracking_number" property from the response received from the request in step #1)
+		*/
+
+		std::wstring url(L"https://"); 
+		url += sqrlhttps;
+		url += sqrlendpoint;
+		url += tracking_number;
+
+		http_client client(url);
+
+		return client.request(methods::DEL);
+
+	}).then([errorFound](http_response response)
+	{
+		if (response.status_code() == status_codes::OK)
+		{
+			auto body = response.extract_string();
+
+			std::wcout << L"deleted file: " << body.get().c_str() << std::endl;
+		}
+		else{
+			std::cerr << "DELETE failed - status code: " << response.status_code() << std::endl;
+			*errorFound = TRUE;
+		}
+	});
+}
+
 void dbgDump(std::string& input){
 #ifdef _DEBUG
 	std::ofstream out("C:\\sqrlposter-dbg.txt");
@@ -230,8 +283,14 @@ void dbgDump(std::string& input){
 #endif
 }
 
-int SqrlPoster::doPost(const HINTERNET *request, bool* errorFound)
+void SqrlPoster::doHTTPPost(const HINTERNET *request, bool* errorFound)
 {
+	/*
+		Send a multipart/form-data POST request with the file contents to the URL contained in the "deliver_to" property in the response above. 
+		The properties in the "form_data" object above should be used as the form data's name/value pairs. 
+		The contents of the file should be sent using the form item name "file".
+	*/
+
 	static const char* mimeBoundary = "B14433C2-EF49-4DB1-938F-EFFE9B471609";
 	
 	static const wchar_t* contentType = L"Content-Type: multipart/form-data; boundary=B14433C2-EF49-4DB1-938F-EFFE9B471609\r\n";
@@ -308,57 +367,6 @@ int SqrlPoster::doPost(const HINTERNET *request, bool* errorFound)
 		*errorFound = TRUE;
 	}
 
-	return result;
-}
-
-std::wstring GetPDFId(const HINTERNET *request, bool* errorFound)
-{
-	std::wstring outputString;
-	int result = ::WinHttpReceiveResponse(*request, nullptr);
-	if (!result){
-		std::cerr << "WinHttpReceiveResponse failed - status code: " << GetLastError() << std::endl;
-		*errorFound = TRUE;
-		return L"";
-	}
-	unsigned long dwSize = sizeof(unsigned long);
-	if (result)
-	{
-		wchar_t headers[1024];
-		dwSize = ARRAYSIZE(headers) * sizeof(wchar_t);
-
-		result = ::WinHttpQueryHeaders(*request, WINHTTP_QUERY_RAW_HEADERS, nullptr, headers, &dwSize, nullptr);
-
-		if (!result){
-			std::cerr << "WinHttpQueryHeaders failed - status code: " << GetLastError() << std::endl;
-			*errorFound = TRUE;
-		}
-
-	}
-	if (result)
-	{
-		char resultText[1024] = { 0 };
-		unsigned long bytesRead;
-		dwSize = ARRAYSIZE(resultText) * sizeof(char);
-		result = ::WinHttpReadData(*request, resultText, dwSize, &bytesRead);
-		if (result)
-		{
-			// Convert string to wstring
-			int wideSize = MultiByteToWideChar(CP_UTF8, 0, resultText, -1, 0, 0);
-			wchar_t* wideString = new wchar_t[wideSize];
-			result = MultiByteToWideChar(CP_UTF8, 0, resultText, -1, wideString, wideSize);
-			if (result)
-			{
-				std::cout << "WinHttpReadData : " << wideString << std::endl;
-			}
-			delete[] wideString;
-		}
-		else{
-			std::cerr << "WinHttpReadData failed - status code: " << GetLastError() << std::endl;
-			*errorFound = TRUE;
-		}
-	}
-	
-	return outputString;
 }
 
 std::wstring SqrlPoster::UploadPDF(bool* errorFound)
@@ -418,13 +426,19 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		::WinHttpSetOption(request, WINHTTP_OPTION_PROXY, &proxyInfo, proxyInfoSize);
 	}
 
-	doPost(&request, errorFound);
+	doHTTPPost(&request, errorFound);
 
 	if (*errorFound == FALSE){
-		outputString = GetPDFId(&request, errorFound);
+		/* construct the browser redirect URL:
+			Once request in step #2 is complete (i.e. the file has been transferred to S3),
+			launch the default web browser and go to https://SQRL_SERVER/#/couriers/TRACKING_NUMBER
+			(using the value of the "tracking_number" property from the response received from the request in step #1)
+		*/
+		outputString = L"https://";
+		outputString+= sqrlhttps;
+		outputString += sqrlendpoint2;
+		outputString += tracking_number;
 	}
-
-	ATLASSERT(*errorFound == FALSE);
 
 	if (proxyInfo.lpszProxy)
 	{
