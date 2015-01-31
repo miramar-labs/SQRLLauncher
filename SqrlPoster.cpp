@@ -286,7 +286,7 @@ void dbgDump(std::string& input){
 #endif
 }
 
-std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
+void SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
 {
 	std::wstring outputString;
 	int result = ::WinHttpReceiveResponse(*request, nullptr);
@@ -294,7 +294,6 @@ std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
 		std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpReceiveResponse failed - status code: " << GetLastError() << std::endl;
 		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
-		return L"";
 	}
 	unsigned long dwSize = sizeof(unsigned long);
 	if (result)
@@ -345,7 +344,6 @@ std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
 		}
 	}
 #endif
-	return outputString;
 }
 
 std::wstring SqrlPoster::UploadPDF(bool* errorFound)

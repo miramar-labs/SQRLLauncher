@@ -49,6 +49,6 @@ private:
 	std::wstring bucketurl;
 
 private:
-	std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound);
+	void GetResponse(const HINTERNET *request, bool* errorFound);
 };
 
