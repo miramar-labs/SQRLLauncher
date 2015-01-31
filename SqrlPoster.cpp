@@ -286,6 +286,60 @@ void dbgDump(std::string& input){
 #endif
 }
 
+#ifdef _DEBUG
+std::wstring GetResponse(const HINTERNET *request, bool* errorFound)
+{
+	std::wstring outputString;
+	int result = ::WinHttpReceiveResponse(*request, nullptr);
+	if (!result){
+		std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpReceiveResponse failed - status code: " << GetLastError() << std::endl;
+		ATLTRACE(ss.str().c_str());
+		*errorFound = TRUE;
+		return L"";
+	}
+	unsigned long dwSize = sizeof(unsigned long);
+	if (result)
+	{
+		wchar_t headers[1024];
+		dwSize = ARRAYSIZE(headers) * sizeof(wchar_t);
+
+		result = ::WinHttpQueryHeaders(*request, WINHTTP_QUERY_RAW_HEADERS, nullptr, headers, &dwSize, nullptr);
+
+		if (!result){
+			std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpQueryHeaders failed - status code: " << GetLastError() << std::endl;
+			ATLTRACE(ss.str().c_str());
+			*errorFound = TRUE;
+		}
+	}
+	if (result)
+	{
+		char resultText[1024] = { 0 };
+		unsigned long bytesRead;
+		dwSize = ARRAYSIZE(resultText) * sizeof(char);
+		result = ::WinHttpReadData(*request, resultText, dwSize, &bytesRead);
+		if (result)
+		{
+			// Convert string to wstring
+			int wideSize = MultiByteToWideChar(CP_UTF8, 0, resultText, -1, 0, 0);
+			wchar_t* wideString = new wchar_t[wideSize];
+			result = MultiByteToWideChar(CP_UTF8, 0, resultText, -1, wideString, wideSize);
+			if (result)
+			{
+				std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpReadData: " << wideString << std::endl;
+				ATLTRACE(ss.str().c_str());
+			}
+			delete[] wideString;
+		}
+		else{
+			std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpReadData failed - status code: " << GetLastError() << std::endl;
+			ATLTRACE(ss.str().c_str());
+			*errorFound = TRUE;
+		}
+	}
+	return outputString;
+}
+#endif
+
 std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 {
 	*errorFound = FALSE;
@@ -429,6 +483,10 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 	}
+
+#ifdef _DEBUG
+	GetResponse(&request, errorFound);
+#endif
 
 	if (*errorFound == FALSE){
 		/* construct the browser redirect URL:
