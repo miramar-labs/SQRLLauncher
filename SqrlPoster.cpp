@@ -18,7 +18,7 @@ using namespace web::http::client;
 using namespace utility;
 
 void stripQuotes(utility::string_t& s){
-	s = s.substr(1, s.size() - 2);
+	s.erase(remove(s.begin(), s.end(), '\"'), s.end());
 }
 
 SqrlPoster::SqrlPoster(const std::wstring& path)
@@ -271,7 +271,7 @@ pplx::task<void> SqrlPoster::DeletePDF(bool* errorFound)
 			ATLTRACE(ss.str().c_str());
 		}
 		else{
-			std::wostringstream ss;ss << "Sqrl:DELETE failed - status code: " << response.status_code() << std::endl;
+			std::wostringstream ss;ss << "Sqrl:WARNING - DELETE failed - status code: " << response.status_code() << std::endl;
 			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
 		}
@@ -280,7 +280,7 @@ pplx::task<void> SqrlPoster::DeletePDF(bool* errorFound)
 
 void dbgDump(std::string& input){
 #ifdef _DEBUG
-	std::ofstream out("C:\\SqrlLauncher-dbg.txt");
+	std::ofstream out("SqrlLauncher-dbg.txt");
 	out << input;
 	out.close();
 #endif
@@ -310,15 +310,15 @@ std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
 			*errorFound = TRUE;
 		}
 		else{
-			//TODO: check for errors in headers !!!
 			wstring hdr(headers);
 			if (hdr.find(L"OK") == std::wstring::npos){
-				std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpQueryHeaders returned an error: " << hdr.c_str() << std::endl;
+				std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpQueryHeaders contained an error: " << hdr.c_str() << std::endl;
 				ATLTRACE(ss.str().c_str());
 				*errorFound = TRUE;
 			}
 		}
 	}
+#ifdef _DEBUG	// get additional info...
 	if (result)
 	{
 		char resultText[1024] = { 0 };
@@ -344,6 +344,7 @@ std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
 			*errorFound = TRUE;
 		}
 	}
+#endif
 	return outputString;
 }
 
