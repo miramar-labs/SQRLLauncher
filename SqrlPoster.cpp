@@ -18,7 +18,7 @@ using namespace web::http::client;
 using namespace utility;
 
 void stripQuotes(utility::string_t& s){
-	s.erase(remove(s.begin(), s.end(), '\"'), s.end());
+	s = s.substr(1, s.size() - 2);
 }
 
 SqrlPoster::SqrlPoster(const std::wstring& path)
