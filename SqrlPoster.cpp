@@ -163,6 +163,8 @@ pplx::task<void> SqrlPoster::GetUploadInfo(bool* errorFound)
 			return response.extract_json();
 		}
 
+		std::wostringstream ss; ss << "Sqrl:GetUploadInfo failed - status code : " << response.status_code();
+		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 		return pplx::task_from_result(json::value());
 	})
