@@ -318,8 +318,8 @@ std::wstring SqrlPoster::GetResponse(const HINTERNET *request, bool* errorFound)
 			}
 		}
 	}
-#ifdef _DEBUG	// get additional info...
-	if (result)
+#ifdef _DEBUG	// get additional debug info...
+	if (result && (*errorFound == TRUE))
 	{
 		char resultText[1024] = { 0 };
 		unsigned long bytesRead;
