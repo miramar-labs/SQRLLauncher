@@ -9,8 +9,6 @@ using namespace std;
 using namespace web::http::client;
 using namespace utility;
 
-#define USE_WININET
-
 class SqrlPoster
 {
 public:

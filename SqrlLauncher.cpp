@@ -14,13 +14,29 @@ public :
 
 CSqrlLauncherModule _AtlModule;
 
+BOOL FileExists(LPCTSTR szPath)
+{
+	DWORD dwAttrib = GetFileAttributes(szPath);
+
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+		!(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
 extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, 
 	LPTSTR lpCmdLine, int nShowCmd)
 {
-	//std::wstring sFilePath(U("C:\\Users\\Aaron Cody\\Desktop\\sqrl\\test.pdf"));
-
-	//DEBUG: Set cmdline args in debug settings to: C:\Users\Aaron Cody\Desktop\sqrl\test.pdf
+	//DEBUG: Set cmdline args in debug settings, eg: C:\Users\Aaron Cody\Desktop\sqrl\test.pdf
+	
 	std::wstring sFilePath(lpCmdLine);
+
+	if (sFilePath.empty()){
+		std::cout << "ERROR: missing pathname argument." << std::endl;
+		return 1;
+	}
+	if (!FileExists(sFilePath.c_str())){
+		std::cout << "ERROR: path arg does not point to a valid file..." << std::endl;
+		return 1;
+	}
 
 	SqrlPoster poster(sFilePath);
 
