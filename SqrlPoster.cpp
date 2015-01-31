@@ -282,7 +282,7 @@ pplx::task<void> SqrlPoster::DeletePDF(bool* errorFound)
 
 void dbgDump(std::string& input){
 #ifdef _DEBUG
-	std::ofstream out("C:\\sqrlposter-dbg.txt");
+	std::ofstream out("C:\\SqrlLauncher-dbg.txt");
 	out << input;
 	out.close();
 #endif
