@@ -25,7 +25,7 @@ BOOL FileExists(LPCTSTR szPath)
 extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, 
 	LPTSTR lpCmdLine, int nShowCmd)
 {
-	//DEBUG: Set cmdline args in debug settings, eg: C:\Users\Aaron Cody\Desktop\sqrl\test.pdf
+	//DEBUG: Set cmdline args in debug settings, eg: $(ProjDir)\test.pdf
 	
 	std::wstring sFilePath(lpCmdLine);
 
