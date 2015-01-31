@@ -30,11 +30,11 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 	std::wstring sFilePath(lpCmdLine);
 
 	if (sFilePath.empty()){
-		std::cout << "ERROR: missing pathname argument." << std::endl;
+		ATLTRACE("Sqrl:ERROR: missing pathname argument...");
 		return 1;
 	}
 	if (!FileExists(sFilePath.c_str())){
-		std::cout << "ERROR: path arg does not point to a valid file..." << std::endl;
+		ATLTRACE("Sqrl:ERROR: path arg does not point to a valid file...");
 		return 1;
 	}
 

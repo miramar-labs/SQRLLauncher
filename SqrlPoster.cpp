@@ -115,7 +115,7 @@ std::wstring SqrlPoster::doUpload(bool* errorFound){
 
 	std::wstring url;
 
-	GetUploadInfo(FullPath, errorFound).wait();
+	GetUploadInfo(errorFound).wait();
 
 	if (*errorFound == FALSE)
 		url = UploadPDF(errorFound);
@@ -128,9 +128,7 @@ std::wstring SqrlPoster::doUpload(bool* errorFound){
 	return url;
 }
 
-//private:
-
-pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorFound)
+pplx::task<void> SqrlPoster::GetUploadInfo(bool* errorFound)
 {
 	/*
 		Send a POST request to https://SQRL_SERVER/api/v1/couriers with the following in the body (size is in bytes):
@@ -151,7 +149,7 @@ pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorF
 	obj[L"name"] = json::value::string(FileNamePlusExt);
 	obj[L"file_type"] = json::value::string(U("application/pdf"));
 
-	std::ifstream in(sFile, std::ifstream::ate | std::ifstream::binary);
+	std::ifstream in(FullPath, std::ifstream::ate | std::ifstream::binary);
 	std::ifstream::pos_type nbytes = in.tellg();
 
 	obj[L"size"] = json::value::number((int32_t)nbytes);
@@ -218,7 +216,7 @@ pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorF
 						}
 						else if (str == U("key")){
 							key = v.serialize(); stripQuotes(key);
-							std::cout << "key=" << key.c_str() << std::endl;
+							std::ostringstream ss;ss << "key=" << key.c_str() << std::endl;
 						}
 						else if (str == U("policy")){
 							policy = v.serialize(); stripQuotes(policy);
@@ -236,7 +234,8 @@ pplx::task<void> SqrlPoster::GetUploadInfo(utility::string_t sFile, bool* errorF
 		}
 		catch (const http_exception& e)
 		{
-			std::cerr << "GetUploadInfo failed - status code: " << e.what() << std::endl;
+			std::wostringstream ss;ss << "Sqrl:GetUploadInfo failed - status code : " << e.what();
+			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
 		}
 	});
@@ -268,10 +267,12 @@ pplx::task<void> SqrlPoster::DeletePDF(bool* errorFound)
 		{
 			auto body = response.extract_string();
 
-			std::wcout << L"deleted file: " << body.get().c_str() << std::endl;
+			std::wostringstream ss;ss << L"Sqrl:deleted file: " << body.get().c_str() << std::endl;
+			ATLTRACE(ss.str().c_str());
 		}
 		else{
-			std::cerr << "DELETE failed - status code: " << response.status_code() << std::endl;
+			std::wostringstream ss;ss << "Sqrl:DELETE failed - status code: " << response.status_code() << std::endl;
+			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
 		}
 	});
@@ -306,13 +307,15 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		L"Hilo/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY,
 		WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
 	if (!session){
-		std::cerr << "WinHttpOpen failed - status code: " << GetLastError() << std::endl;
+		std::wostringstream ss;ss << "Sqrl:WinHttpOpen failed - status code: " << GetLastError() << std::endl;
+		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 		return L"";
 	}
 	connect = ::WinHttpConnect(session, deliver_to.substr(8).c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
 	if (!connect){
-		std::cerr << "WinHttpConnect failed - status code: " << GetLastError() << std::endl;
+		std::wostringstream ss;ss << "Sqrl:WinHttpConnect failed - status code: " << GetLastError() << std::endl;
+		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 		return L"";
 	}
@@ -320,7 +323,8 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		connect, L"POST", L"", L"HTTP/1.1",		
 		WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
 	if (!request){
-		std::cerr << "WinHttpOpenRequest failed - status code: " << GetLastError() << std::endl;
+		std::wostringstream ss;ss << "Sqrl:WinHttpOpenRequest failed - status code: " << GetLastError() << std::endl;
+		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 		return L"";
 	}
@@ -415,12 +419,14 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 			0);
 
 		if (result != TRUE){
-			std::cerr << "WinHttpSendRequest failed - status code: " << GetLastError() << std::endl;
+			std::wostringstream ss;ss << "Sqrl:WinHttpSendRequest failed - status code: " << GetLastError() << std::endl;
+			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
 		}
 	}
 	else{
-		std::cerr << "WinHttpAddRequestHeaders failed - status code: " << GetLastError() << std::endl;
+		std::wostringstream ss;ss << "Sqrl:WinHttpAddRequestHeaders failed - status code: " << GetLastError() << std::endl;
+		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 	}
 
@@ -434,6 +440,9 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		outputString+= sqrlhttps;
 		outputString += sqrlendpoint2;
 		outputString += tracking_number;
+
+		std::wostringstream ss; ss << "Sqrl:SUCCESS: uploaded " << FileNamePlusExt.c_str() << " to AWS bucket: " << key.c_str() << std::endl;
+		ATLTRACE(ss.str().c_str());
 	}
 
 	if (proxyInfo.lpszProxy)
