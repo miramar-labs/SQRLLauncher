@@ -15,7 +15,7 @@ public:
 	SqrlPoster(const std::wstring& FullPath);
 	~SqrlPoster();
 
-	std::wstring doPOST(bool* errorFound);	
+	std::wstring doUpload(bool* errorFound);	
 
 private:
 	string_t deliver_to;

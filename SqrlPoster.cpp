@@ -111,7 +111,7 @@ SqrlPoster::~SqrlPoster()
 {
 }
 
-std::wstring SqrlPoster::doPOST(bool* errorFound){
+std::wstring SqrlPoster::doUpload(bool* errorFound){
 
 	std::wstring url;
 	

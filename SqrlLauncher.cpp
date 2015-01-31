@@ -42,7 +42,7 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 
 	bool err = FALSE;
 
-	utility::string_t url = poster.doPOST(&err);
+	utility::string_t url = poster.doUpload(&err);
 
 	if (!err){
 		/* 
