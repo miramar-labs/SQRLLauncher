@@ -4,10 +4,10 @@
 
 
  /* File created by MIDL compiler version 8.00.0603 */
-/* at Thu Jan 29 19:10:32 2015
+/* at Tue Feb 03 07:27:06 2015
  */
 /* Compiler settings for SqrlLauncher.idl:
-    Oicf, W1, Zp8, env=Win32 (32b run), target_arch=X86 8.00.0603 
+    Oicf, W1, Zp8, env=Win64 (32b run), target_arch=AMD64 8.00.0603 
     protocol : dce , ms_ext, c_ext, robust
     error checks: allocation ref bounds_check enum stub_data 
     VC __declspec() decoration level: 
@@ -32,8 +32,8 @@
 #endif // __RPCNDR_H_VERSION__
 
 
-#ifndef __SqrlLauncher_i_h__
-#define __SqrlLauncher_i_h__
+#ifndef __SqrlLauncher_h_h__
+#define __SqrlLauncher_h_h__
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1020)
 #pragma once

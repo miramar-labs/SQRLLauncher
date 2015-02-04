@@ -11,6 +11,8 @@ using namespace ATL;
 #include <thread>
 #include <cpprest/json.h>
 
+#include <shlobj.h>
+
 using namespace concurrency::streams;
 using namespace web;
 using namespace web::http;
@@ -50,11 +52,16 @@ SqrlPoster::SqrlPoster(const std::wstring& path)
 
 	memset(buff, 0, sizeof(buff));
 
-	::GetCurrentDirectoryW(sizeof(buff), buff);
-
-	iniFile = buff; iniFile += L"\\SqrlLauncher.ini";
+	//::GetCurrentDirectoryW(sizeof(buff), buff);
+	//iniFile = buff; iniFile += L"\\SqrlLauncher.ini";
+	//memset(buff, 0, sizeof(buff));
 	
-	memset(buff, 0, sizeof(buff));
+	// Fetch Local App Data folder path.
+	wchar_t* localAppData = 0;
+	SHGetKnownFolderPath(FOLDERID_ProgramData, 0, NULL, &localAppData);
+	wcsncpy_s(buff, localAppData, sizeof(buff));
+	wcsncat_s(buff, L"\\Sqrl\\SqrlLauncher.ini", sizeof(buff));
+	iniFile = buff;
 
 	GetPrivateProfileString(
 		L"settings",
@@ -164,6 +171,8 @@ pplx::task<void> SqrlPoster::GetUploadInfo(bool* errorFound)
 		std::wostringstream ss; ss << "Sqrl:GetUploadInfo failed - status code : " << response.status_code();
 		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
+		MessageBox(NULL, ss.str().c_str(), NULL, NULL);
+		
 		return pplx::task_from_result(json::value());
 	})
 		.then([this, errorFound](pplx::task<json::value> previousTask)
@@ -233,8 +242,9 @@ pplx::task<void> SqrlPoster::GetUploadInfo(bool* errorFound)
 
 		}
 		catch (const http_exception& e)
-		{
+		{  
 			std::wostringstream ss;ss << "Sqrl:GetUploadInfo failed - status code : " << e.what();
+			MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
 		}
@@ -309,6 +319,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	if (!session){
 		std::wostringstream ss;ss << "Sqrl:WinHttpOpen failed - status code: " << GetLastError() << std::endl;
 		ATLTRACE(ss.str().c_str());
+		MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 		*errorFound = TRUE;
 		return L"";
 	}
@@ -316,6 +327,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	if (!connect){
 		std::wostringstream ss;ss << "Sqrl:WinHttpConnect failed - status code: " << GetLastError() << std::endl;
 		ATLTRACE(ss.str().c_str());
+		MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 		*errorFound = TRUE;
 		return L"";
 	}
@@ -324,6 +336,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 		WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
 	if (!request){
 		std::wostringstream ss;ss << "Sqrl:WinHttpOpenRequest failed - status code: " << GetLastError() << std::endl;
+		MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 		return L"";
@@ -420,12 +433,14 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 
 		if (result != TRUE){
 			std::wostringstream ss;ss << "Sqrl:WinHttpSendRequest failed - status code: " << GetLastError() << std::endl;
+			MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
 		}
 	}
 	else{
 		std::wostringstream ss;ss << "Sqrl:WinHttpAddRequestHeaders failed - status code: " << GetLastError() << std::endl;
+		MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 	}
@@ -435,6 +450,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 	result = ::WinHttpReceiveResponse(request, nullptr);
 	if (!result){
 		std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpReceiveResponse failed - status code: " << GetLastError() << std::endl;
+		MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 		ATLTRACE(ss.str().c_str());
 		*errorFound = TRUE;
 	}
@@ -448,6 +464,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 
 		if (!result){
 			std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpQueryHeaders failed - status code: " << GetLastError() << std::endl;
+			MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 			ATLTRACE(ss.str().c_str());
 			*errorFound = TRUE;
 		}
@@ -455,6 +472,7 @@ std::wstring SqrlPoster::UploadPDF(bool* errorFound)
 			wstring hdr(headers);
 			if (hdr.find(L"OK") == std::wstring::npos){
 				std::wostringstream ss; ss << L"Sqrl:GetResponse:WinHttpQueryHeaders contained an error: " << hdr.c_str() << std::endl;
+				MessageBox(NULL, ss.str().c_str(), NULL, NULL);
 				ATLTRACE(ss.str().c_str());
 				*errorFound = TRUE;
 			}

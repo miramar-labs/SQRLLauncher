@@ -22,19 +22,27 @@ BOOL FileExists(LPCTSTR szPath)
 		!(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, 
+void stripFileQuotes(utility::string_t& s){
+	s.erase(remove(s.begin(), s.end(), '\"'), s.end());
+}
+
+extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/,
 	LPTSTR lpCmdLine, int nShowCmd)
 {
 	//DEBUG: Set cmdline args in debug settings, eg: $(ProjDir)\test.pdf
 	
 	std::wstring sFilePath(lpCmdLine);
+	
+	stripFileQuotes(sFilePath);
 
 	if (sFilePath.empty()){
 		ATLTRACE("Sqrl:ERROR: missing pathname argument...");
+		MessageBox(NULL, L"Sqrl:ERROR: missing pathname argument...", NULL, NULL);
 		return 1;
 	}
 	if (!FileExists(sFilePath.c_str())){
 		ATLTRACE("Sqrl:ERROR: path arg does not point to a valid file...");
+		MessageBox(NULL, L"Sqrl:ERROR: path arg does not point to a valid file...", NULL, NULL);
 		return 1;
 	}
 
@@ -44,34 +52,12 @@ extern "C" int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstan
 
 	std::wstring url = poster.doUpload(&err);
 
-	if ((!err) && (!url.empty())){
-
-		IWebBrowser2* pBrowser = NULL;
-		HRESULT hr = CoCreateInstance(CLSID_InternetExplorer, NULL,
-		CLSCTX_SERVER, IID_IWebBrowser2, (LPVOID*)&pBrowser);
-
-		if (SUCCEEDED(hr) && (pBrowser != NULL))
-		{
-			VARIANT vEmpty;
-			VariantInit(&vEmpty);
-
-			VARIANT vFlags;
-			V_VT(&vFlags) = VT_I4;
-			V_I4(&vFlags) = navOpenInNewWindow;
-
-			BSTR bstrURL = SysAllocString(url.c_str());
-
-			pBrowser->Navigate(bstrURL, &vFlags, &vEmpty, &vEmpty, &vEmpty);
-
-			SysFreeString(bstrURL);
-
-			if (pBrowser)
-				pBrowser->Release();
-		}
-
-	}
-	else{
+	if ((!err) && (!url.empty())){		
+		ShellExecute(NULL, L"open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+	} else {
 		ATLTRACE("Sqrl:ERROR: unable to navigate to PDF...");
+		std::wostringstream ss; ss << "Sqrl:ERROR: unable to navigate to PDF, err : " << err;
+		MessageBox(NULL,ss.str().c_str(), NULL, NULL);
 	}
 
 	//delete locally generated PDF .... (release only ...)
